@@ -1,0 +1,105 @@
+name: Build Aether c2s with SUSFS
+
+on:
+  push:
+    branches:
+      - c2s-aether-root
+
+permissions:
+  contents: read
+
+concurrency:
+  group: c2s-aether-root-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    env:
+      C2S_ROOT_KERNEL_DIR: ${{ runner.temp }}/c2s-kernel
+    steps:
+      - name: Checkout source and build dependencies
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Make space for firmware and install tools
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h .
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            attr bc bison build-essential ccache clang cmake cpio ffmpeg flex \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu git jq \
+            libbrotli-dev libbz2-dev libelf-dev libgtest-dev libncurses-dev \
+            libpcre2-dev libprotobuf-dev libssl-dev libunwind-dev libzstd-dev lld \
+            protobuf-compiler python-is-python3 python3 rsync unzip webp wget zip \
+            openjdk-17-jdk-headless
+          echo 'JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> "$GITHUB_ENV"
+          echo '/usr/lib/jvm/java-17-openjdk-amd64/bin' >> "$GITHUB_PATH"
+
+      - name: Build and inspect the c2s kernel
+        run: bash target/c2s/root/build-kernel.sh "$C2S_ROOT_KERNEL_DIR"
+
+      - name: Load filesystems for firmware extraction
+        run: |
+          for module in erofs f2fs; do
+            if ! sudo modprobe "$module"; then
+              for package in "linux-modules-extra-$(uname -r)" linux-modules-extra-azure linux-modules-azure; do
+                sudo apt-get install -y "$package" && sudo modprobe "$module" && break
+              done
+            fi
+            grep -qw "$module" /proc/filesystems
+          done
+          sudo fallocate -l 8G /mnt/c2s-build.swap
+          sudo chmod 600 /mnt/c2s-build.swap
+          sudo mkswap /mnt/c2s-build.swap
+          sudo swapon /mnt/c2s-build.swap
+
+      - name: Build ArtisanROM tools
+        run: |
+          source ./buildenv.sh c2s
+          ./scripts/build_dependencies.sh
+
+      - name: Download and extract donor and target firmware
+        run: |
+          source ./buildenv.sh c2s
+          ./scripts/download_fw.sh
+          ./scripts/extract_fw.sh
+
+      - name: Build ROM and verify boot partition image
+        run: |
+          source ./buildenv.sh c2s
+          ./scripts/make_rom.sh
+          shopt -s nullglob
+          roms=(out/*_c2s-sign.zip)
+          test "${#roms[@]}" -eq 1
+          tmp="$(mktemp -d)"
+          trap 'rm -rf -- "$tmp"' EXIT
+          unzip -p "${roms[0]}" boot.img > "$tmp/boot.img"
+          test "$(stat -c %s "$tmp/boot.img")" -eq 61865984
+          avbtool verify_image --image "$tmp/boot.img"
+          mkdir -p dist
+          mv "${roms[0]}" dist/
+          cp "$C2S_ROOT_KERNEL_DIR"/{kernel.config,kernel-sources.txt} dist/
+          printf 'ROM source %s\nActions run %s/%s/actions/runs/%s\n' \
+            "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> dist/kernel-sources.txt
+          (
+            cd dist
+            curl --fail --silent --show-error --location --retry 3 \
+              https://github.com/KernelSU-Next/KPatch-Next-Module/releases/download/v0.0.1/KPatch-Next-Module.zip \
+              -o KPatch-Next-Module.zip
+            echo 'ad4802ef34dd564d3935f07f5d4c8298535ffe2dd8b64dfd30e2036709995039  KPatch-Next-Module.zip' | sha256sum -c -
+            sha256sum -- *.zip kernel.config kernel-sources.txt > SHA256SUMS
+          )
+
+      - name: Upload ROM and KPM add-on
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: aether-c2s-susfs-kpm-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0

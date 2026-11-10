@@ -127,4 +127,13 @@ REPLACE_KERNEL_BINARIES()
 }
 # ]
 
-REPLACE_KERNEL_BINARIES
+if [[ "$TARGET_CODENAME" == c2s && -n "${C2S_ROOT_KERNEL_DIR:-}" ]]; then
+    LOG "- Installing the source-built c2s SUSFS kernel"
+    mkdir -p "$WORK_DIR/kernel" || ABORT "Could not create kernel output directory"
+    for image in boot dtbo; do
+        install -m 0644 "$C2S_ROOT_KERNEL_DIR/$image.img" "$WORK_DIR/kernel/$image.img" ||
+            ABORT "Missing c2s kernel build output: $image.img"
+    done
+else
+    REPLACE_KERNEL_BINARIES
+fi
