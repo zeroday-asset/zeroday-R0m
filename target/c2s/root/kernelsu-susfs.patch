@@ -232,31 +232,6 @@ index e5448955..623976d9 100644
  
  // for the umount list
  struct mount_entry {
-diff --git a/kernel/hook/lsm_hooks.c b/kernel/hook/lsm_hooks.c
-index f7405a77..56301a46 100644
---- a/kernel/hook/lsm_hooks.c
-+++ b/kernel/hook/lsm_hooks.c
-@@ -4,6 +4,7 @@
- #include <linux/binfmts.h>
- #include <linux/err.h>
- #include <linux/atomic.h>
-+#include <linux/fs.h>
- 
- #include "klog.h" // IWYU pragma: keep
- #include "runtime/ksud_boot.h"
-@@ -111,6 +112,12 @@ static int ksu_task_fix_setuid(struct cred *new, const struct cred *old,
- #define DEVPTS_SUPER_MAGIC	0x1cd1
- #endif
- 
-+int ksu_handle_devpts(struct inode *inode)
-+{
-+	return 0;
-+}
-+EXPORT_SYMBOL(ksu_handle_devpts);
-+
- #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
- int ksu_inode_permission(struct mnt_idmap *idmap, struct inode *inode, int mask)
- #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 diff --git a/kernel/hook/setuid_hook.c b/kernel/hook/setuid_hook.c
 index 3dddf937..52bd173e 100644
 --- a/kernel/hook/setuid_hook.c

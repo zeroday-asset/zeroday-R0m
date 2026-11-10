@@ -6,8 +6,8 @@ KernelSU Next sources. Its artifact includes the ROM, kernel config, source
 revisions and checksums. The boot image is AVB-verified at 61,865,984 bytes.
 
 The KernelSU Next patch backports Artisan's SUSFS integration from
-`a4eaa915` and `a8307d91`, adapting the UID hook to the pinned legacy
-driver. It also carries the SELinux changes from Aether v4.0.2.
+`a4eaa915`, adapting the UID hook to the pinned legacy driver and using
+the devpts hook already present in the Artisan kernel. It also carries the SELinux changes from Aether v4.0.2.
 SUSFS is built into the kernel. KPM is provided separately by the upstream
 KPatch-Next Module v0.0.1. Its boot patch and KPM loading need a device test.
 
