@@ -1,0 +1,11 @@
+diff --git a/include/linux/debug-snapshot.h b/include/linux/debug-snapshot.h
+--- a/include/linux/debug-snapshot.h
++++ b/include/linux/debug-snapshot.h
+@@ -219,7 +219,6 @@
+ #define dbg_snapshot_post_panic()		do { } while(0)
+ #define dbg_snapshot_post_reboot(a)		do { } while(0)
+ #define dbg_snapshot_set_hardlockup(a)		do { } while(0)
+-#define dbg_snapshot_get_hardlockup()		do { } while(0)
+ #define dbg_snapshot_set_sjtag_status() do { } while (0)
+ #define dbg_snasshot_get_sjtag_status() do { } while (0)
+ #define dbg_snapshot_get_debug_level()		do { } while(0)

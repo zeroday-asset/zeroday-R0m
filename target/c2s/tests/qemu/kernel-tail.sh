@@ -2,6 +2,9 @@
 # Sourced inside the patched kernel tree by the phone build's preparation code.
 test_dir="$source_dir/../tests/qemu"
 export PATH="$PWD/toolchain/clang_14/bin:$PATH"
+# Samsung's disabled-debug branch has both a macro and a function with the
+# same name. Keep its function stub when compiling without Samsung hardware.
+git apply "$test_dir/virtual-board.patch"
 make LLVM=1 LLVM_IAS=1 ARCH=arm64 O=out defconfig
 # Remove the hardware platform selections from the generic defconfig. QEMU virt
 # uses the generic GIC/PSCI/PL011 paths; Samsung-only drivers cannot run there.
