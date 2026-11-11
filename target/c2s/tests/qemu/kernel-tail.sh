@@ -15,7 +15,7 @@ scripts/kconfig/merge_config.sh -m -O out out/.config arch/arm64/configs/ksu.con
 make LLVM=1 LLVM_IAS=1 ARCH=arm64 O=out olddefconfig
 cp "$test_dir/susfs_qemu_probe.c" kernel/susfs_qemu_probe.c
 echo 'obj-y += susfs_qemu_probe.o' >> kernel/Makefile
-make -j2 LLVM=1 LLVM_IAS=1 ARCH=arm64 O=out Image
+make -j"$(nproc)" LLVM=1 LLVM_IAS=1 ARCH=arm64 O=out Image
 for option in KSU KSU_SUSFS KSU_SUSFS_SUS_MOUNT PID_NS; do
     grep -Fx "CONFIG_$option=y" out/.config
 done

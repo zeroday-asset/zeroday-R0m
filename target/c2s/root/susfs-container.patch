@@ -109,35 +109,46 @@ diff --git a/include/linux/pid_namespace.h b/include/linux/pid_namespace.h
 diff --git a/kernel/pid_namespace.c b/kernel/pid_namespace.c
 --- a/kernel/pid_namespace.c
 +++ b/kernel/pid_namespace.c
-@@ -23,6 +23,27 @@
+@@ -22,6 +22,38 @@
+ #include <linux/sched/task.h>
  #include <linux/sched/signal.h>
  #include <linux/idr.h>
- 
++#ifdef CONFIG_KSU_SUSFS
++#include <linux/security.h>
++#endif
++
 +#ifdef CONFIG_KSU_SUSFS
 +extern bool susfs_is_current_ksu_domain(void);
-+extern u32 susfs_get_sid_from_name(const char *name);
 +extern u32 susfs_get_current_sid(void);
 +
 +static bool susfs_is_authorized_container_creator(void)
 +{
-+	u32 sid;
++	static const char expected[] = "u:r:droidspacesd:s0";
++	char *context = NULL;
++	u32 length = 0;
++	bool allowed;
 +
 +	if (!uid_eq(current_euid(), GLOBAL_ROOT_UID))
 +		return false;
 +	if (susfs_is_current_ksu_domain())
 +		return true;
-+	/* Droidspaces transitions its root monitor before creating namespaces.
-+	 * Resolve the policy's real SID; an absent domain never grants trust.
++	/* Inspect the actual context, not name-to-SID alone: before policy load
++	 * SELinux can map an unknown context string to its initial kernel SID.
 +	 */
-+	sid = susfs_get_sid_from_name("u:r:droidspacesd:s0");
-+	return sid && sid == susfs_get_current_sid();
++	if (security_secid_to_secctx(susfs_get_current_sid(), &context, &length))
++		return false;
++	allowed = context &&
++		(length == sizeof(expected) - 1 ||
++		 (length == sizeof(expected) && context[length - 1] == '\0')) &&
++		!memcmp(context, expected, sizeof(expected) - 1);
++	security_release_secctx(context, length);
++	return allowed;
 +}
 +#endif
-+
+ 
  static DEFINE_MUTEX(pid_caches_mutex);
  static struct kmem_cache *pid_ns_cachep;
- /* MAX_PID_NS_LEVEL is needed for limiting size of 'struct pid' */
-@@ -113,6 +134,14 @@
+@@ -113,6 +145,14 @@
  	kref_init(&ns->kref);
  	ns->level = level;
  	ns->parent = get_pid_ns(parent_pid_ns);
