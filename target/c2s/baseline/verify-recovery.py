@@ -70,7 +70,8 @@ assert recovery_bins and any(b'twrp' in blob.lower() for blob in recovery_bins),
 props = '\n'.join(v.decode(errors='replace') for k, v in files.items()
                   if k.endswith('.prop') or k.endswith('prop.default'))
 assert 'c2s' in props or 'SM-N986B' in props, 'Recovery device identity is not c2s/N986B'
-fstabs = {k: v.decode(errors='replace') for k, v in files.items() if 'fstab' in k}
+fstabs = {k: v.decode(errors='replace') for k, v in files.items()
+          if 'fstab' in k or k.endswith('twrp.flags')}
 print('Recovery filesystem tables:', json.dumps(fstabs, indent=2), flush=True)
 # Mount entries can be split between Android and TWRP tables. Samsung's block
 # partition names may be uppercase even when the recovery mountpoint is not.
