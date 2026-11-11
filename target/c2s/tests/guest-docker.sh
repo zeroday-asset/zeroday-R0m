@@ -27,6 +27,7 @@ print('PASS: fdinfo mount ID is present in mountinfo')
 PY
 # The cgroupfs driver needs controllers delegated through its Docker parent
 # as well as the Droidspaces root. Keep this explicit in the small init fixture.
+echo '+cpu +memory +pids' > /sys/fs/cgroup/cgroup.subtree_control
 mkdir -p /sys/fs/cgroup/docker
 echo '+cpu +memory +pids' > /sys/fs/cgroup/docker/cgroup.subtree_control
 cat /sys/fs/cgroup/docker/cgroup.controllers
