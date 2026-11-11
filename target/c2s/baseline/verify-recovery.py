@@ -71,7 +71,11 @@ props = '\n'.join(v.decode(errors='replace') for k, v in files.items()
                   if k.endswith('.prop') or k.endswith('prop.default'))
 assert 'c2s' in props or 'SM-N986B' in props, 'Recovery device identity is not c2s/N986B'
 fstabs = {k: v.decode(errors='replace') for k, v in files.items() if 'fstab' in k}
-assert any('/data' in v and '/boot' in v for v in fstabs.values()), 'Missing expected recovery mount entries'
+print('Recovery filesystem tables:', json.dumps(fstabs, indent=2), flush=True)
+# Mount entries can be split between Android and TWRP tables. Samsung's block
+# partition names may be uppercase even when the recovery mountpoint is not.
+all_fstabs = '\n'.join(fstabs.values()).lower()
+assert '/data' in all_fstabs and '/boot' in all_fstabs, 'Missing expected recovery mount entries'
 assert vbmeta.startswith(b'AVB0'), 'Invalid vbmeta header'
 flags, = struct.unpack_from('>I', vbmeta, 120)
 assert flags & 2, 'Odin package does not disable AVB verification'

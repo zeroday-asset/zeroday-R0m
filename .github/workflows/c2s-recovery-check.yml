@@ -1,0 +1,31 @@
+name: Inspect N986B recovery companions
+on:
+  push:
+    branches: [c2s-baseline]
+    paths:
+      - 'target/c2s/baseline/verify-recovery.py'
+      - 'target/c2s/baseline/companions.json'
+      - '.github/workflows/c2s-recovery-check.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          sparse-checkout: target/c2s/baseline
+      - run: sudo apt-get update && sudo apt-get install -y lz4
+      - run: |
+          python3 target/c2s/baseline/fetch-companions.py companions
+          python3 target/c2s/baseline/verify-recovery.py \
+            companions/02-Recovery/ArtisanROM_SM-N985F_SM-N986B_20260202.tar \
+            companions/recovery-inspection.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: N986B-recovery-and-root-companions-${{ github.sha }}
+          path: companions/
+          if-no-files-found: warn
