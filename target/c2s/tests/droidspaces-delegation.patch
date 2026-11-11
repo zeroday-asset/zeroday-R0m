@@ -1,0 +1,30 @@
+diff --git a/src/monitor/monitor.c b/src/monitor/monitor.c
+--- a/src/monitor/monitor.c
++++ b/src/monitor/monitor.c
+@@ -190,6 +190,16 @@
+       _exit(EXIT_FAILURE);
+     }
+ 
++    /* Keep the waiter out of the cgroup namespace's root. It is outside
++     * the new PID namespace, so a guest sees it only as PID 0 and cannot
++     * move it. Leaving it at the root prevents cgroup-v2 controller
++     * delegation (EBUSY), breaking nested Docker resource limits.
++     * Move before fork to avoid racing guest init's controller setup.
++     * The cgroup namespace remains rooted at the container's root.
++     */
++    if (ds_cgroup_attach(cfg->container_name) < 0)
++      _exit(EXIT_FAILURE);
++
+     pid_t init_pid = fork();
+     if (init_pid < 0)
+       _exit(EXIT_FAILURE);
+@@ -197,6 +207,9 @@
+ 
+     if (init_pid == 0) {
+       /* CONTAINER INIT (PID 1 inside namespace) */
++      /* Start the payload at the namespace root; systemd can now move
++       * itself to init.scope and delegate controllers without the waiter. */
++      ds_cgroup_join(cfg->container_name);
+       /* Close pipe ends the init process doesn't use */
+       if (mid_sync_pipe[0] >= 0)
+         close(mid_sync_pipe[0]);

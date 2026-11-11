@@ -6,6 +6,7 @@ on:
       - '.github/workflows/c2s-runtime-tests.yml'
       - 'target/c2s/tests/*.sh'
       - 'target/c2s/tests/Dockerfile'
+      - 'target/c2s/tests/droidspaces-delegation.patch'
 permissions:
   contents: read
   actions: read
