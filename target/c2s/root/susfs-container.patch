@@ -46,14 +46,14 @@ diff --git a/fs/susfs.c b/fs/susfs.c
  extern void setup_selinux(const char *domain, struct cred *cred);
  extern struct cred *ksu_cred;
 +
-+/* Containers need real mount metadata after leaving the KernelSU domain.
-+ * Check the active PID namespace: unsharing mounts alone does not exempt
-+ * Android apps. Every non-initial PID namespace is exempt, not just Droidspaces.
++/* Retain real metadata only in PID namespaces created by authorized root
++ * in the KernelSU domain, and their descendants. Merely creating a PID
++ * namespace from an Android app must not bypass global hiding.
 + */
 +bool susfs_is_current_in_container(void)
 +{
 +#ifdef CONFIG_PID_NS
-+	return task_active_pid_ns(current) != &init_pid_ns;
++	return task_active_pid_ns(current)->susfs_container;
 +#else
 +	return false;
 +#endif
@@ -92,3 +92,47 @@ diff --git a/include/linux/susfs_def.h b/include/linux/susfs_def.h
  #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
  			__kuid_val(current_uid()) >= 10000);
  #else
+diff --git a/include/linux/pid_namespace.h b/include/linux/pid_namespace.h
+--- a/include/linux/pid_namespace.h
++++ b/include/linux/pid_namespace.h
+@@ -30,6 +30,10 @@
+ 	struct kmem_cache *pid_cachep;
+ 	unsigned int level;
+ 	struct pid_namespace *parent;
++#ifdef CONFIG_KSU_SUSFS
++	/* Set once at creation; userspace cannot grant this exemption. */
++	bool susfs_container;
++#endif
+ #ifdef CONFIG_PROC_FS
+ 	struct vfsmount *proc_mnt;
+ 	struct dentry *proc_self;
+diff --git a/kernel/pid_namespace.c b/kernel/pid_namespace.c
+--- a/kernel/pid_namespace.c
++++ b/kernel/pid_namespace.c
+@@ -23,6 +23,10 @@
+ #include <linux/sched/signal.h>
+ #include <linux/idr.h>
+ 
++#ifdef CONFIG_KSU_SUSFS
++extern bool susfs_is_current_ksu_domain(void);
++#endif
++
+ static DEFINE_MUTEX(pid_caches_mutex);
+ static struct kmem_cache *pid_ns_cachep;
+ /* MAX_PID_NS_LEVEL is needed for limiting size of 'struct pid' */
+@@ -113,6 +117,15 @@
+ 	kref_init(&ns->kref);
+ 	ns->level = level;
+ 	ns->parent = get_pid_ns(parent_pid_ns);
++#ifdef CONFIG_KSU_SUSFS
++	/* A new unprivileged user/PID namespace must not bypass global hiding.
++	 * Trust only global root in the KernelSU domain, or an already trusted
++	 * container's descendants (including nested Docker user namespaces).
++	 */
++	ns->susfs_container = parent_pid_ns->susfs_container ||
++		(uid_eq(current_euid(), GLOBAL_ROOT_UID) &&
++		 susfs_is_current_ksu_domain());
++#endif
+ 	ns->user_ns = get_user_ns(user_ns);
+ 	ns->ucounts = ucounts;
+ 	ns->pid_allocated = PIDNS_ADDING;

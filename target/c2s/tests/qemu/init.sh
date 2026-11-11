@@ -23,8 +23,16 @@ unshare -m sh -ec '
     ! grep -q " /susfs-marker " /proc/self/mountinfo
 ' || fail 'mount namespace alone bypassed hiding'
 echo 'PASS: unsharing only mounts retains hiding'
-echo 1 > "$probe/unmounted_flag"
 unshare -pmf sh -ec '
+    mount -t proc proc /proc
+    test "$(cat /sys/module/susfs_qemu_probe/parameters/in_container)" = 0
+    ! grep -q " /susfs-marker " /proc/self/mountinfo
+' || fail 'unrelated PID namespace bypassed hiding'
+echo 'PASS: unrelated PID namespace retains global hiding'
+echo 1 > "$probe/unmounted_flag"
+echo 1 > "$probe/creator_domain"
+unshare -pmf sh -ec '
+    echo 0 > /sys/module/susfs_qemu_probe/parameters/creator_domain
     mount -t proc proc /proc
     test "$(cat /sys/module/susfs_qemu_probe/parameters/in_container)" = 1
     grep " /susfs-marker " /proc/self/mountinfo

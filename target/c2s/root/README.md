@@ -22,10 +22,13 @@ included. The xt_qtaguid patch is inapplicable because this kernel has no
 
 Droidspaces documents SUSFS as unsupported and identifies global mount hiding
 as a container boot failure. `susfs-container.patch` is an experimental local
-compatibility change: processes in a non-initial PID namespace bypass SUSFS
+compatibility change: processes in a trusted container PID namespace bypass SUSFS
 mount-list filtering and the unmounted-process metadata predicates. Ordinary
 Android processes in the initial PID namespace retain their existing behavior.
-This applies to every non-initial PID namespace, not a Droidspaces allowlist.
+Trust is set when a namespace is created by global root in the KernelSU SELinux
+domain, or inherited from an already trusted parent. An unrelated PID namespace
+gets no exemption, including one created by a user namespace's mapped root.
+This is a KernelSU-root container policy, not an application-name allowlist.
 It does not prevent container-visible mounts being inspected from within a
 container, and does not change mount ID allocation or namespace creation.
 
