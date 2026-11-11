@@ -13,7 +13,9 @@ s=Path(sys.argv[1]).read_text().split('bash build.sh -m c2s -k y -r n')[0]
 s+='\nsource "$source_dir/../tests/qemu/kernel-tail.sh"\n'
 Path(sys.argv[2]).write_text(s)
 PY
-bash "$root/.qemu-prepare.sh" "$repo/.qemu/kernel"
+if [ ! -s "$repo/.qemu/kernel/Image" ]; then
+    bash "$root/.qemu-prepare.sh" "$repo/.qemu/kernel"
+fi
 cp "$repo/.qemu/kernel/kernel.config" "$repo/qemu-results/kernel.config"
 printf '%s\n' \
   'Virtual ARM64 build of pinned Artisan/KSU/SUSFS sources and the phone compatibility patches.' \
@@ -31,3 +33,4 @@ sudo chmod 755 "$rootfs/init"
 aarch64-linux-gnu-gcc -static -O2 -Wall -Wextra -Werror "$test_dir/fd-mount-check.c" -o "$repo/.qemu/fd-mount-check"
 sudo cp "$repo/.qemu/fd-mount-check" "$rootfs/bin/"
 (cd "$rootfs"; sudo find . -print0 | sudo cpio --null -o -H newc --owner=0:0 | gzip -1) > "$repo/.qemu/initramfs.gz"
+sha256sum "$repo/.qemu/kernel/Image" "$repo/.qemu/initramfs.gz" > "$repo/qemu-results/inputs.sha256"

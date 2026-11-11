@@ -26,11 +26,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc bison flex libssl-dev libelf-dev \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-system-arm cpio
+      - name: Restore the matching virtual kernel
+        id: virtual-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .qemu/kernel/
+          key: qemu-arm64-v1-${{ hashFiles('target/c2s/root/build-kernel.sh', 'target/c2s/root/*.patch', 'target/c2s/root/droidspaces.config', 'target/c2s/tests/qemu/virt.config', 'target/c2s/tests/qemu/kernel-tail.sh', 'target/c2s/tests/qemu/susfs_qemu_probe.c', 'target/c2s/tests/qemu/virtual-board.patch') }}
       - name: Build an instrumented virtual ARM64 kernel from the pinned sources
         run: |
           mkdir -p qemu-results
           set -o pipefail
           bash target/c2s/tests/qemu/build.sh 2>&1 | tee qemu-results/build.log
+      - name: Save the source-built virtual kernel
+        if: steps.virtual-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .qemu/kernel/
+          key: ${{ steps.virtual-cache.outputs.cache-primary-key }}
       - name: Boot ARM64 and exercise the SUSFS hooks
         run: |
           set -o pipefail

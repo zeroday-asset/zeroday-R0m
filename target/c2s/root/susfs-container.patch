@@ -109,29 +109,45 @@ diff --git a/include/linux/pid_namespace.h b/include/linux/pid_namespace.h
 diff --git a/kernel/pid_namespace.c b/kernel/pid_namespace.c
 --- a/kernel/pid_namespace.c
 +++ b/kernel/pid_namespace.c
-@@ -23,6 +23,10 @@
+@@ -23,6 +23,27 @@
  #include <linux/sched/signal.h>
  #include <linux/idr.h>
  
 +#ifdef CONFIG_KSU_SUSFS
 +extern bool susfs_is_current_ksu_domain(void);
++extern u32 susfs_get_sid_from_name(const char *name);
++extern u32 susfs_get_current_sid(void);
++
++static bool susfs_is_authorized_container_creator(void)
++{
++	u32 sid;
++
++	if (!uid_eq(current_euid(), GLOBAL_ROOT_UID))
++		return false;
++	if (susfs_is_current_ksu_domain())
++		return true;
++	/* Droidspaces transitions its root monitor before creating namespaces.
++	 * Resolve the policy's real SID; an absent domain never grants trust.
++	 */
++	sid = susfs_get_sid_from_name("u:r:droidspacesd:s0");
++	return sid && sid == susfs_get_current_sid();
++}
 +#endif
 +
  static DEFINE_MUTEX(pid_caches_mutex);
  static struct kmem_cache *pid_ns_cachep;
  /* MAX_PID_NS_LEVEL is needed for limiting size of 'struct pid' */
-@@ -113,6 +117,15 @@
+@@ -113,6 +134,14 @@
  	kref_init(&ns->kref);
  	ns->level = level;
  	ns->parent = get_pid_ns(parent_pid_ns);
 +#ifdef CONFIG_KSU_SUSFS
 +	/* A new unprivileged user/PID namespace must not bypass global hiding.
-+	 * Trust only global root in the KernelSU domain, or an already trusted
++	 * Trust global root in a known root container domain, or an already trusted
 +	 * container's descendants (including nested Docker user namespaces).
 +	 */
 +	ns->susfs_container = parent_pid_ns->susfs_container ||
-+		(uid_eq(current_euid(), GLOBAL_ROOT_UID) &&
-+		 susfs_is_current_ksu_domain());
++		susfs_is_authorized_container_creator();
 +#endif
  	ns->user_ns = get_user_ns(user_ns);
  	ns->ucounts = ucounts;
