@@ -15,6 +15,14 @@ docker build -t c2s-droidspaces-fixture target/c2s/tests
 fixture_id=$(docker create c2s-droidspaces-fixture)
 trap 'docker rm -f "$fixture_id" >/dev/null' EXIT
 docker export "$fixture_id" | sudo tar -x -C .runtime/rootfs
+# Cloud runners may permit only their assigned DNS server. Avoid substituting
+# a public resolver, and record the resolver used in the evidence.
+dns_server=$(awk '$1=="nameserver" && $2 !~ /^127\./ {print $2; exit}' /run/systemd/resolve/resolv.conf /etc/resolv.conf)
+test -n "$dns_server"
+printf '%s\n' "$dns_server" > .runtime/dns-server
+echo "Runtime DNS: $dns_server" >> runtime-results/scope.txt
+sudo jq --arg dns "$dns_server" '.dns=[$dns]' .runtime/rootfs/etc/docker/daemon.json > .runtime/daemon.json
+sudo cp .runtime/daemon.json .runtime/rootfs/etc/docker/daemon.json
 docker pull busybox:1.36
 docker save busybox:1.36 -o .runtime/busybox-image.tar
 sudo cp .runtime/busybox-image.tar .runtime/rootfs/fixture/

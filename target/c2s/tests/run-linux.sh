@@ -21,7 +21,8 @@ cleanup() {
 trap cleanup EXIT
 droidspaces check | tee "$results/check.txt"
 timeout 120 droidspaces --name="$name" --rootfs-img="$root/rootfs.img" \
-    --init=/sbin/fixture-init --net=nat --allow-sandboxing start
+    --init=/sbin/fixture-init --net=nat --dns="$(cat "$root/dns-server")" \
+    --memory=2G --cpus=2 --pids-limit=1024 --allow-sandboxing start
 timeout 300 droidspaces --name="$name" run /fixture/guest-docker.sh
 # A clean stop and another boot must also work on the same persistent image.
 timeout 45 droidspaces --name="$name" stop

@@ -26,8 +26,12 @@ mark 'Docker daemon is ready inside Droidspaces'
 docker load -i /fixture/busybox-image.tar
 test "$(docker run --rm busybox:1.36 echo nested-docker-ok)" = nested-docker-ok
 mark 'Docker creates and runs a nested container'
-docker run --rm --memory 64m --pids-limit 64 busybox:1.36 sh -c 'test -r /proc/self/status'
-mark 'Docker container with memory and PID limits'
+docker run --rm --memory 64m --pids-limit 64 --cpus 0.5 busybox:1.36 sh -ec '
+    test "$(cat /sys/fs/cgroup/memory.max)" = 67108864
+    test "$(cat /sys/fs/cgroup/pids.max)" = 64
+    test "$(cat /sys/fs/cgroup/cpu.max)" = "50000 100000"
+'
+mark 'memory, PID and CPU limits are present in the nested kernel cgroup'
 docker volume create fixture-data
 docker run --rm -v fixture-data:/data busybox:1.36 sh -c 'echo durable > /data/value'
 test "$(docker run --rm -v fixture-data:/data busybox:1.36 cat /data/value)" = durable
@@ -40,8 +44,10 @@ for attempt in $(seq 1 15); do
 done
 grep -Fx docker-http-ok /fixture/http-result
 mark 'Docker bridge networking and published port'
+cat /etc/resolv.conf
+docker run --rm busybox:1.36 cat /etc/resolv.conf
 docker run --rm busybox:1.36 nslookup example.com
-docker run --rm busybox:1.36 wget -qO /dev/null http://example.com
+docker run --rm busybox:1.36 wget -T 20 -qO /dev/null http://example.com
 mark 'nested container DNS and outbound HTTP'
 docker rm -f fixture-web
 docker volume rm fixture-data
