@@ -9,3 +9,17 @@ diff --git a/include/linux/debug-snapshot.h b/include/linux/debug-snapshot.h
  #define dbg_snapshot_set_sjtag_status() do { } while (0)
  #define dbg_snasshot_get_sjtag_status() do { } while (0)
  #define dbg_snapshot_get_debug_level()		do { } while(0)
+diff --git a/include/linux/sec_debug.h b/include/linux/sec_debug.h
+--- a/include/linux/sec_debug.h
++++ b/include/linux/sec_debug.h
+@@ -152,8 +152,8 @@
+ #define secdbg_exin_set_aud(a)		do { } while (0)
+ #define secdbg_exin_set_gpuinfo(a)		do { } while (0)
+ #define secdbg_exin_set_epd(a)		do { } while (0)
+-#define secdbg_exin_set_unfz(a)		do { } while (0)
+-#define secdbg_exin_get_unfz(a)		do { } while (0)
++#define secdbg_exin_set_unfz(...)		do { } while (0)
++#define secdbg_exin_get_unfz(...)		""
+ #define secdbg_exin_set_master_ocp()		do { } while (0)
+ #define secdbg_exin_set_slave_ocp()		do { } while (0)
+ #endif /* CONFIG_SEC_DEBUG_EXTRA_INFO */

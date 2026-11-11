@@ -1,30 +1,70 @@
 diff --git a/src/monitor/monitor.c b/src/monitor/monitor.c
 --- a/src/monitor/monitor.c
 +++ b/src/monitor/monitor.c
-@@ -190,6 +190,16 @@
+@@ -179,6 +179,28 @@
+      * would isolate nothing. */
+     ds_cgroup_join(cfg->container_name);
+ 
++    /* Open these before CLONE_NEWCGROUP changes path lookup. The waiter is
++     * outside the guest PID namespace and appears there only as PID 0.
++     * Keeping it at the root prevents v2 delegation; the guest cannot move it.
++     */
++    int payload_cg_fd = -1, waiter_cg_fd = -1;
++    if (access("/sys/fs/cgroup/cgroup.procs", F_OK) == 0) {
++      char safe_name[256], cg_path[PATH_MAX];
++      sanitize_container_name(cfg->container_name, safe_name, sizeof(safe_name));
++      snprintf(cg_path, sizeof(cg_path),
++               "/sys/fs/cgroup/droidspaces/%s/cgroup.procs", safe_name);
++      payload_cg_fd = open(cg_path, O_WRONLY | O_CLOEXEC);
++      snprintf(cg_path, sizeof(cg_path),
++               "/sys/fs/cgroup/droidspaces/%s/ds-waiter", safe_name);
++      if (mkdir(cg_path, 0755) < 0 && errno != EEXIST)
++        _exit(EXIT_FAILURE);
++      snprintf(cg_path, sizeof(cg_path),
++               "/sys/fs/cgroup/droidspaces/%s/ds-waiter/cgroup.procs", safe_name);
++      waiter_cg_fd = open(cg_path, O_WRONLY | O_CLOEXEC);
++      if (payload_cg_fd < 0 || waiter_cg_fd < 0)
++        _exit(EXIT_FAILURE);
++    }
++
+     int clone_flags = CLONE_NEWPID;
+     if (cfg->net_mode != DS_NET_HOST)
+       clone_flags |= CLONE_NEWNET;
+@@ -190,12 +212,27 @@
        _exit(EXIT_FAILURE);
      }
  
-+    /* Keep the waiter out of the cgroup namespace's root. It is outside
-+     * the new PID namespace, so a guest sees it only as PID 0 and cannot
-+     * move it. Leaving it at the root prevents cgroup-v2 controller
-+     * delegation (EBUSY), breaking nested Docker resource limits.
-+     * Move before fork to avoid racing guest init's controller setup.
-+     * The cgroup namespace remains rooted at the container's root.
-+     */
-+    if (ds_cgroup_attach(cfg->container_name) < 0)
-+      _exit(EXIT_FAILURE);
++    if (waiter_cg_fd >= 0) {
++      char pid_s[32];
++      int len = snprintf(pid_s, sizeof(pid_s), "%d", (int)getpid());
++      if (write(waiter_cg_fd, pid_s, (size_t)len) != len)
++        _exit(EXIT_FAILURE);
++      close(waiter_cg_fd);
++    }
 +
      pid_t init_pid = fork();
      if (init_pid < 0)
        _exit(EXIT_FAILURE);
-@@ -197,6 +207,9 @@
  
      if (init_pid == 0) {
        /* CONTAINER INIT (PID 1 inside namespace) */
-+      /* Start the payload at the namespace root; systemd can now move
-+       * itself to init.scope and delegate controllers without the waiter. */
-+      ds_cgroup_join(cfg->container_name);
++      if (payload_cg_fd >= 0) {
++        char pid_s[32];
++        int len = snprintf(pid_s, sizeof(pid_s), "%d", (int)getpid());
++        if (write(payload_cg_fd, pid_s, (size_t)len) != len)
++          _exit(EXIT_FAILURE);
++        close(payload_cg_fd);
++      }
        /* Close pipe ends the init process doesn't use */
        if (mid_sync_pipe[0] >= 0)
          close(mid_sync_pipe[0]);
+@@ -206,6 +243,9 @@
+        * is how it knows the boot is over. Do not close it here. */
+       _exit(internal_boot(cfg));
+     }
++
++    if (payload_cg_fd >= 0)
++      close(payload_cg_fd);
+ 
+     /* Intermediate: redirect stdio to /dev/null NOW (after forking init).
+      * It only exists to wait for init and has no business talking to the
