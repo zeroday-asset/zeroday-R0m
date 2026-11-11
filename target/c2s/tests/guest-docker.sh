@@ -37,7 +37,11 @@ ip route
 ip route show default | grep default
 curl --fail --max-time 20 --silent --show-error http://example.com/ > /fixture/outer-http-result
 mark 'outer Droidspaces container has DNS and outbound HTTP'
-systemctl start docker.service
+if ! systemctl start docker.service; then
+    systemctl status docker.service fixture-containerd.service --no-pager || true
+    journalctl -u fixture-containerd.service -u docker.service --no-pager
+    exit 1
+fi
 for attempt in $(seq 1 90); do
     if docker info > /fixture/docker-info.txt 2>&1; then break; fi
     sleep 1
