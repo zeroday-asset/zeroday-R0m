@@ -1,6 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 mark() { echo "PASS: $*"; }
+for attempt in $(seq 1 100); do
+    if [ -f /fixture/init-ready ]; then break; fi
+    sleep 0.1
+done
+cat /fixture/init.log
+test -f /fixture/init-ready
 uname -a
 cat /sys/fs/cgroup/cgroup.controllers
 cat /sys/fs/cgroup/cgroup.subtree_control
@@ -61,4 +67,5 @@ docker run --rm busybox:1.36 wget -T 20 -qO /dev/null http://example.com
 mark 'nested container DNS and outbound HTTP'
 docker rm -f fixture-web
 docker volume rm fixture-data
+rm -f /fixture/init-ready
 mark 'Docker resources cleaned up'

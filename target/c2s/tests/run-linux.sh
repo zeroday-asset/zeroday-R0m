@@ -7,6 +7,7 @@ cleanup() {
     status=$?
     trap - EXIT
     droidspaces --name="$name" run cat /fixture/dockerd.log > "$results/dockerd.log" 2>&1 || true
+    droidspaces --name="$name" run cat /fixture/init.log > "$results/init.log" 2>&1 || true
     droidspaces --name="$name" run cat /fixture/docker-info.txt > "$results/docker-info.txt" 2>&1 || true
     droidspaces --name="$name" info > "$results/container-info.txt" 2>&1 || true
     timeout 45 droidspaces --name="$name" stop > "$results/stop.log" 2>&1 || true
