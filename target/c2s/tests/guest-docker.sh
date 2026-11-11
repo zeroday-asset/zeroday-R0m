@@ -11,6 +11,8 @@ test -f /fixture/init-ready
 uname -a
 cat /sys/fs/cgroup/cgroup.controllers
 cat /sys/fs/cgroup/cgroup.subtree_control
+cat /sys/fs/cgroup/cgroup.procs
+cat /proc/1/cgroup /proc/self/cgroup
 test "$(readlink /proc/1/ns/pid)" = "$(readlink /proc/self/ns/pid)"
 mark 'container processes see their own PID namespace'
 unshare --user --map-root-user --mount --pid --fork --mount-proc \
@@ -25,16 +27,9 @@ assert info['mnt_id'].strip() in mounts
 os.close(fd)
 print('PASS: fdinfo mount ID is present in mountinfo')
 PY
-# The cgroupfs driver needs controllers delegated through its Docker parent
-# as well as the Droidspaces root. Keep this explicit in the small init fixture.
-echo '+cpu +memory +pids' > /sys/fs/cgroup/cgroup.subtree_control
-mkdir -p /sys/fs/cgroup/docker
-echo '+cpu +memory +pids' > /sys/fs/cgroup/docker/cgroup.subtree_control
-cat /sys/fs/cgroup/docker/cgroup.controllers
-cat /sys/fs/cgroup/docker/cgroup.subtree_control
 curl --fail --max-time 20 --silent http://example.com/ > /fixture/outer-http-result
 mark 'outer Droidspaces container has DNS and outbound HTTP'
-nohup dockerd > /fixture/dockerd.log 2>&1 < /dev/null &
+systemctl start docker.service
 for attempt in $(seq 1 90); do
     if docker info > /fixture/docker-info.txt 2>&1; then break; fi
     sleep 1

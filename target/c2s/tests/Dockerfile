@@ -5,7 +5,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
     && update-alternatives --set iptables /usr/sbin/iptables-legacy \
     && update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy \
     && mkdir -p /etc/docker /fixture /www \
-    && printf '{"userns-remap":"default","exec-opts":["native.cgroupdriver=cgroupfs"]}\n' > /etc/docker/daemon.json
+    && printf '{"userns-remap":"default","exec-opts":["native.cgroupdriver=systemd"]}\n' > /etc/docker/daemon.json
 COPY guest-docker.sh /fixture/guest-docker.sh
 RUN chmod 755 /fixture/guest-docker.sh \
     && systemctl disable docker.service docker.socket containerd.service \

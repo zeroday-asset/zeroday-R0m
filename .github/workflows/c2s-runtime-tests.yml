@@ -4,7 +4,8 @@ on:
     branches: [c2s-runtime-tests]
     paths:
       - '.github/workflows/c2s-runtime-tests.yml'
-      - 'target/c2s/tests/**'
+      - 'target/c2s/tests/*.sh'
+      - 'target/c2s/tests/Dockerfile'
 permissions:
   contents: read
   actions: read
