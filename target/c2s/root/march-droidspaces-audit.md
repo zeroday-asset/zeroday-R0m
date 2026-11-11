@@ -60,6 +60,13 @@ restrictions; config flags alone did not resolve every runtime constraint.
 
 ## Evidence still required on the phone
 
+Our first Droidspaces-enabled CI build exposed a separate Artisan-tree problem:
+enabling optional `CGROUP_NET_PRIO` compiles `include/net/netprio_cgroup.h`,
+which still reads `css->cgroup->id` after that field was removed by cgroup/BPF
+backports. The config now leaves this optional controller disabled. This does
+not disable bridge/NAT networking, cgroup BPF or CPU/memory/pids limits. It is
+a confirmed compilation issue in our tree, not evidence about March's failure.
+
 - Start/stop a Linux container repeatedly with global hiding enabled.
 - Confirm real container mounts and consistent fd/mountinfo/statfs metadata.
 - Exercise nested `unshare`/proc mounts and Docker/Podman workloads, rather than
