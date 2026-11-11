@@ -1,0 +1,139 @@
+name: Build N986B baseline bundle
+
+on:
+  push:
+    branches:
+      - c2s-baseline
+
+permissions:
+  contents: read
+
+concurrency:
+  group: c2s-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - name: Checkout source and build dependencies
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Make space for firmware and install tools
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h .
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            attr bc bison build-essential ccache clang cmake cpio ffmpeg flex \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu git jq \
+            libbrotli-dev libbz2-dev libelf-dev libgtest-dev libncurses-dev \
+            libpcre2-dev libprotobuf-dev libssl-dev libunwind-dev libzstd-dev lld \
+            protobuf-compiler python-is-python3 python3 rsync unzip webp wget zip \
+            openjdk-17-jdk-headless lz4
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo 'JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> "$GITHUB_ENV"
+          echo '/usr/lib/jvm/java-17-openjdk-amd64/bin' >> "$GITHUB_PATH"
+          echo "C2S_ROOT_KERNEL_DIR=$RUNNER_TEMP/c2s-kernel" >> "$GITHUB_ENV"
+          echo "C2S_COMPANIONS_DIR=$RUNNER_TEMP/c2s-companions" >> "$GITHUB_ENV"
+
+      - name: Fetch and inspect the pinned recovery and root companions
+        run: |
+          python3 target/c2s/baseline/fetch-companions.py "$C2S_COMPANIONS_DIR"
+          python3 target/c2s/baseline/verify-recovery.py \
+            "$C2S_COMPANIONS_DIR/02-Recovery/ArtisanROM_SM-N985F_SM-N986B_20260202.tar" \
+            "$C2S_COMPANIONS_DIR/recovery-inspection.json"
+
+      - name: Restore the source-built c2s kernel
+        id: kernel-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ env.C2S_ROOT_KERNEL_DIR }}
+          key: c2s-baseline-kernel-v1-${{ hashFiles('target/c2s/root/build-kernel.sh', 'target/c2s/root/kernelsu-susfs.patch') }}
+
+      - name: Build and inspect the c2s kernel
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        run: bash target/c2s/root/build-kernel.sh "$C2S_ROOT_KERNEL_DIR"
+
+      - name: Save the source-built c2s kernel
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ env.C2S_ROOT_KERNEL_DIR }}
+          key: ${{ steps.kernel-cache.outputs.cache-primary-key }}
+
+      - name: Preserve kernel build outputs
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: n986b-baseline-kernel-inputs-${{ github.sha }}
+          path: ${{ env.C2S_ROOT_KERNEL_DIR }}/
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Load filesystems for firmware extraction
+        run: |
+          for module in erofs f2fs; do
+            if ! sudo modprobe "$module"; then
+              for package in "linux-modules-extra-$(uname -r)" linux-modules-extra-azure linux-modules-azure; do
+                sudo apt-get install -y "$package" && sudo modprobe "$module" && break
+              done
+            fi
+            grep -qw "$module" /proc/filesystems
+          done
+          sudo fallocate -l 8G /mnt/c2s-build.swap
+          sudo chmod 600 /mnt/c2s-build.swap
+          sudo mkswap /mnt/c2s-build.swap
+          sudo swapon /mnt/c2s-build.swap
+
+      - name: Build ArtisanROM tools
+        run: |
+          source ./buildenv.sh c2s
+          ./scripts/build_dependencies.sh
+
+      - name: Download and extract donor and target firmware
+        run: |
+          source ./buildenv.sh c2s
+          ./scripts/download_fw.sh
+          ./scripts/extract_fw.sh
+
+      - name: Build ROM and verify boot partition image
+        run: |
+          source ./buildenv.sh c2s
+          ./scripts/make_rom.sh
+          shopt -s nullglob
+          roms=(out/*_c2s-sign.zip)
+          test "${#roms[@]}" -eq 1
+          tmp="$(mktemp -d)"
+          trap 'rm -rf -- "$tmp"' EXIT
+          unzip -p "${roms[0]}" boot.img > "$tmp/boot.img"
+          test "$(stat -c %s "$tmp/boot.img")" -eq 61865984
+          avbtool verify_image --image "$tmp/boot.img"
+          unzip -tq "${roms[0]}"
+          mkdir -p dist/01-ROM dist/04-Restore-Boot
+          unzip -p "${roms[0]}" boot.img > dist/04-Restore-Boot/boot-before-KPM.img
+          unzip -p "${roms[0]}" dtbo.img > dist/04-Restore-Boot/dtbo.img
+          test -s dist/04-Restore-Boot/dtbo.img
+          mv "${roms[0]}" dist/01-ROM/
+          cp -a "$C2S_COMPANIONS_DIR"/. dist/
+          cp target/c2s/baseline/START-HERE.txt dist/00-START-HERE.txt
+          cp "$C2S_ROOT_KERNEL_DIR"/{kernel.config,kernel-sources.txt} dist/
+          printf 'ROM source %s\nActions run %s/%s/actions/runs/%s\n' \
+            "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> dist/kernel-sources.txt
+          (
+            cd dist
+            find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+
+      - name: Upload the complete N986B baseline package
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: N986B-Aether-4.0.2-Baseline-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0

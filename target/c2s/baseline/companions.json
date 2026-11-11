@@ -1,0 +1,26 @@
+[
+  {
+    "name": "02-Recovery/ArtisanROM_SM-N985F_SM-N986B_20260202.tar",
+    "url": "https://pixeldrain.com/api/file/5q16ybiL?download",
+    "sha256": "34b741c06ca3fc0ae0004696462e3c43dcb3725b3e87b311375cfbbdbf907959",
+    "source": "https://github.com/ArtisanROM/ArtisanROM/releases/tag/v4.0.2"
+  },
+  {
+    "name": "03-Root/KernelSU_Next_v3.4.2_33355-release.apk",
+    "url": "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.2/KernelSU_Next_v3.4.2_33355-release.apk",
+    "sha256": "774a5511f7034a4930e881114e202319cbdc34c5aaaa5c7c6b6d2902364e4c58",
+    "source": "https://github.com/KernelSU-Next/KernelSU-Next/releases/tag/v3.4.2"
+  },
+  {
+    "name": "03-Root/ksu_module_susfs_R28.zip",
+    "url": "https://github.com/sidex15/susfs4ksu-module/releases/download/v1.5.2%2B_R28/ksu_module_susfs_1.5.2%2B.zip",
+    "sha256": "abcd6bf456ea8189298d9e496faa440201d90e4f0bd93b83c0527589001c9376",
+    "source": "https://github.com/sidex15/susfs4ksu-module/releases/tag/v1.5.2%2B_R28"
+  },
+  {
+    "name": "03-Root/KPatch-Next-Module.zip",
+    "url": "https://github.com/KernelSU-Next/KPatch-Next-Module/releases/download/v0.0.1/KPatch-Next-Module.zip",
+    "sha256": "ad4802ef34dd564d3935f07f5d4c8298535ffe2dd8b64dfd30e2036709995039",
+    "source": "https://github.com/KernelSU-Next/KPatch-Next-Module/releases/tag/v0.0.1"
+  }
+]

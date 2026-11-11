@@ -1,0 +1,73 @@
+N986B BASELINE PACKAGE — ArtisanROM Aether 4.0.2 + KernelSU Next + SUSFS
+
+For SM-N986B / SM-N986B/DS (Exynos c2s) only.
+The ROM and kernel were built in the linked public GitHub Actions run.
+This is a first-device-test build, not a phone-validated release.
+
+WHAT YOU HAVE
+
+01-ROM: The flashable ROM ZIP. Our kernel is already inside it; do not flash
+        another kernel over it. It includes KernelSU Next and compiled SUSFS.
+02-Recovery: Artisan's unchanged c2s Odin pack: TWRP recovery + disabled vbmeta.
+03-Root: KernelSU Next manager APK, SUSFS module, and optional KPM add-on.
+04-Restore-Boot: This ROM's exact boot/dtbo images before any KPM modification.
+
+The baseline uses Artisan's normal device kernel configuration plus our
+KernelSU/SUSFS integration. Experimental Droidspaces patches and configuration
+fragments are excluded. SUSFS userspace retains upstream global-hiding defaults.
+This unofficial ROM uses test signing keys and does not include official OTA.
+
+BEFORE INSTALLING
+
+Save anything you want to keep off the phone: Format Data erases internal
+storage. The bootloader must already be unlocked. Keep matching stock firmware
+available for recovery. The package does not include or downgrade BL/CP firmware.
+Use a current compatible SM-N986B stock bootloader and modem; do not downgrade
+the bootloader to an older binary revision. Your previously reported build was
+N986BXXSIHYH3. Never use N986U/U1/N/W or another model's firmware.
+
+INSTALL THE ROM
+
+1. Extract the OUTER downloaded GitHub artifact ZIP on the computer.
+   The ZIP inside 01-ROM is the ROM to flash. Do not sideload the outer bundle.
+2. If installing/replacing recovery, use patched Odin with Auto Reboot OFF.
+   Put 02-Recovery/ArtisanROM_SM-N985F_SM-N986B_20260202.tar in USERDATA,
+   following Artisan's S20/Note20 guide. It contains recovery/vbmeta only.
+   Do not enable Re-Partition or provide a PIT file.
+3. After Odin reports PASS, keep USB connected. Hold Side/Power + Volume Down
+   until the screen goes black, then immediately hold Side/Power + Volume Up
+   to enter TWRP. Do not let stock Android boot and replace recovery first.
+4. For this move from stock/different ROM: TWRP > Wipe > Format Data > type yes.
+   Then factory-reset from Wipe, and Reboot > Recovery.
+5. TWRP > Advanced > ADB Sideload. On the computer run:
+      adb sideload "path/to/01-ROM/<the-ROM-filename>.zip"
+   Use the actual ROM ZIP filename. Do not flash the manager APK or root-module
+   ZIPs through TWRP. Do not use the S10 repartitioner/cleaner on this N986B.
+6. Reboot System. Leave the first boot time to finish. If it bootloops, return
+   to recovery and collect logs instead of adding more root modifications.
+
+AFTER A SUCCESSFUL FIRST BOOT
+
+1. Install 03-Root/KernelSU_Next_v3.4.2_33355-release.apk as an Android app.
+   KernelSU is already compiled into this boot image: do not use a GKI/LKM
+   kernel installer, Magisk patch, or another device's boot image.
+2. Confirm KernelSU Next recognizes the kernel and root works. Then install
+   03-Root/ksu_module_susfs_R28.zip through KernelSU Next > Modules, and reboot.
+3. Confirm the phone remains usable with SUSFS before adding anything else.
+4. KPM is optional and is NOT active merely because the ZIP is in this bundle.
+   Install KPatch-Next-Module.zip through KernelSU Next, then follow its WebUI
+   boot-patching instructions. It changes boot, so test it only after the ROM,
+   root and SUSFS are working. KPM loading has not been tested on this phone.
+
+IF A KPM BOOT PATCH FAILS
+
+The file in 04-Restore-Boot/boot-before-KPM.img is the exact pre-KPM boot image
+from THIS ROM. In TWRP, Install > Install Image, select it, and choose Boot.
+That restores this ROM's KernelSU/SUSFS baseline. It does not restore stock OS.
+Do not flash any boot image to Recovery, and do not re-lock the bootloader.
+
+Sources and validation details: kernel-sources.txt, companion-sources.json,
+kernel.config, recovery-inspection.json, and SHA256SUMS in this package.
+Official installation guide: https://artisanrom.github.io/ArtisanROM/
+Official c2s recovery provenance:
+https://github.com/ArtisanROM/ArtisanROM/releases/tag/v4.0.2
