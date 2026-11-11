@@ -6,9 +6,15 @@ printf 'Droidspaces source %s\nROM kernel was built separately at 906cbe7a735d3f
 uname -a >> runtime-results/scope.txt
 curl -fLsS --retry 3 "https://codeload.github.com/ravindu644/Droidspaces-OSS/tar.gz/$revision" \
     | tar -xz --strip-components=1 -C .runtime/droidspaces
+# The extracted source is inside the Actions checkout. Give it its own Git
+# root so git apply cannot treat it as a subdirectory of the ROM repository
+# and silently skip every patch path outside that checkout prefix.
+git -C .runtime/droidspaces init --quiet
 git -C .runtime/droidspaces apply --check "$PWD/target/c2s/tests/droidspaces-delegation.patch"
-git -C .runtime/droidspaces apply "$PWD/target/c2s/tests/droidspaces-delegation.patch"
+git -C .runtime/droidspaces apply --verbose "$PWD/target/c2s/tests/droidspaces-delegation.patch"
+grep -F 'int payload_cg_fd = -1, waiter_cg_fd = -1;' .runtime/droidspaces/src/monitor/monitor.c
 sha256sum target/c2s/tests/droidspaces-delegation.patch >> runtime-results/scope.txt
+sha256sum .runtime/droidspaces/src/monitor/monitor.c >> runtime-results/scope.txt
 # This fixture tests the Linux backend using the runner's static glibc toolchain;
 # it is not the Android ARM64/musl binary.
 make -C .runtime/droidspaces -j2 output/droidspaces-x86_64 CC=gcc
