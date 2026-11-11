@@ -6,6 +6,10 @@ root=$(realpath .runtime)
 cleanup() {
     status=$?
     trap - EXIT
+    if [ -d "/mnt/Droidspaces/$name/fixture" ]; then
+        cp "/mnt/Droidspaces/$name/fixture/"*.log "$results/" 2>/dev/null || true
+        cat "/mnt/Droidspaces/$name/fixture/init.log" 2>/dev/null || true
+    fi
     droidspaces --name="$name" run cat /fixture/dockerd.log > "$results/dockerd.log" 2>&1 || true
     droidspaces --name="$name" run cat /fixture/init.log > "$results/init.log" 2>&1 || true
     droidspaces --name="$name" run cat /fixture/docker-info.txt > "$results/docker-info.txt" 2>&1 || true
@@ -28,7 +32,7 @@ cleanup() {
 trap cleanup EXIT
 droidspaces check | tee "$results/check.txt"
 timeout 120 droidspaces --name="$name" --rootfs-img="$root/rootfs.img" \
-    --init=/sbin/fixture-init --net=nat --dns="$(cat "$root/dns-server")" \
+    --init=/sbin/init --net=nat --dns="$(cat "$root/dns-server")" \
     --memory=2G --cpus=2 --pids-limit=1024 --allow-sandboxing start
 timeout 300 droidspaces --name="$name" run /fixture/guest-docker.sh
 # A clean stop and another boot must also work on the same persistent image.

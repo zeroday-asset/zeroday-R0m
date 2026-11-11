@@ -5,7 +5,8 @@ for attempt in $(seq 1 100); do
     if [ -f /fixture/init-ready ]; then break; fi
     sleep 0.1
 done
-cat /fixture/init.log
+systemctl --no-pager --failed || true
+systemctl is-system-running || true
 test -f /fixture/init-ready
 uname -a
 cat /sys/fs/cgroup/cgroup.controllers
