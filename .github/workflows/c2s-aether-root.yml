@@ -42,8 +42,31 @@ jobs:
           echo '/usr/lib/jvm/java-17-openjdk-amd64/bin' >> "$GITHUB_PATH"
           echo "C2S_ROOT_KERNEL_DIR=$RUNNER_TEMP/c2s-kernel" >> "$GITHUB_ENV"
 
+      - name: Restore the source-built c2s kernel
+        id: kernel-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ env.C2S_ROOT_KERNEL_DIR }}
+          key: c2s-kernel-v1-${{ hashFiles('target/c2s/root/build-kernel.sh', 'target/c2s/root/kernelsu-susfs.patch') }}
+
       - name: Build and inspect the c2s kernel
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
         run: bash target/c2s/root/build-kernel.sh "$C2S_ROOT_KERNEL_DIR"
+
+      - name: Save the source-built c2s kernel
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ env.C2S_ROOT_KERNEL_DIR }}
+          key: ${{ steps.kernel-cache.outputs.cache-primary-key }}
+
+      - name: Preserve kernel build outputs
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: c2s-kernel-build-inputs-${{ github.sha }}
+          path: ${{ env.C2S_ROOT_KERNEL_DIR }}/
+          if-no-files-found: error
+          compression-level: 0
 
       - name: Load filesystems for firmware extraction
         run: |
