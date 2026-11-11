@@ -1,0 +1,44 @@
+name: ARM64 SUSFS namespace runtime tests
+on:
+  push:
+    branches: [c2s-runtime-tests]
+    paths:
+      - '.github/workflows/c2s-qemu-susfs.yml'
+      - 'target/c2s/tests/qemu/**'
+permissions:
+  contents: read
+concurrency:
+  group: c2s-qemu-susfs
+  cancel-in-progress: true
+jobs:
+  arm64-susfs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            target/c2s/root
+            target/c2s/tests/qemu
+      - name: Install ARM64 test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison flex libssl-dev libelf-dev \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-system-arm cpio
+      - name: Build an instrumented virtual ARM64 kernel from the pinned sources
+        run: |
+          mkdir -p qemu-results
+          set -o pipefail
+          bash target/c2s/tests/qemu/build.sh 2>&1 | tee qemu-results/build.log
+      - name: Boot ARM64 and exercise the SUSFS hooks
+        run: |
+          set -o pipefail
+          bash target/c2s/tests/qemu/run.sh 2>&1 | tee qemu-results/console.log
+      - name: Preserve kernel config and runtime evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: arm64-susfs-qemu-evidence-${{ github.sha }}
+          path: qemu-results/
+          if-no-files-found: warn
