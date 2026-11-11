@@ -41,6 +41,17 @@ timeout 120 droidspaces --name="$name" --rootfs-img="$root/rootfs.img" \
 iptables-nft -I FORWARD 1 -i ds+ -j ACCEPT
 iptables-nft -I FORWARD 1 -o ds+ -j ACCEPT
 iptables-nft -S FORWARD
+for attempt in $(seq 1 100); do
+    if [ -f "/mnt/Droidspaces/$name/fixture/init-ready" ]; then break; fi
+    sleep 0.1
+done
+echo 'Host view of processes blocking root delegation:'
+cat "/sys/fs/cgroup/droidspaces/$name/cgroup.procs"
+while read -r task_pid; do
+    ps -p "$task_pid" -o pid,ppid,comm,args
+done < "/sys/fs/cgroup/droidspaces/$name/cgroup.procs"
+echo 'Host view of session leaf:'
+cat "/sys/fs/cgroup/droidspaces/$name/ds-enter/cgroup.procs" || true
 timeout 300 droidspaces --name="$name" run /fixture/guest-docker.sh
 # A clean stop and another boot must also work on the same persistent image.
 timeout 45 droidspaces --name="$name" stop
