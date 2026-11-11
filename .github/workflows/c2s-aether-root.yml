@@ -47,7 +47,7 @@ jobs:
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.C2S_ROOT_KERNEL_DIR }}
-          key: c2s-kernel-v1-${{ hashFiles('target/c2s/root/build-kernel.sh', 'target/c2s/root/kernelsu-susfs.patch', 'target/c2s/root/droidspaces.config', 'target/c2s/root/droidspaces-cgroup.patch') }}
+          key: c2s-kernel-v1-${{ hashFiles('target/c2s/root/build-kernel.sh', 'target/c2s/root/kernelsu-susfs.patch', 'target/c2s/root/droidspaces.config', 'target/c2s/root/droidspaces-cgroup.patch', 'target/c2s/root/susfs-container.patch') }}
 
       - name: Build and inspect the c2s kernel
         if: steps.kernel-cache.outputs.cache-hit != 'true'
@@ -121,8 +121,7 @@ jobs:
               'https://github.com/sidex15/susfs4ksu-module/releases/download/v1.5.2%2B_R28/ksu_module_susfs_1.5.2%2B.zip' \
               -o susfs-upstream.zip
             echo 'abcd6bf456ea8189298d9e496faa440201d90e4f0bd93b83c0527589001c9376  susfs-upstream.zip' | sha256sum -c -
-            python3 ../target/c2s/root/configure-susfs.py susfs-upstream.zip ksu_module_susfs_droidspaces.zip
-            rm susfs-upstream.zip
+            mv susfs-upstream.zip ksu_module_susfs_R28.zip
             sha256sum -- *.zip kernel.config kernel-sources.txt > SHA256SUMS
           )
 
@@ -133,3 +132,4 @@ jobs:
           path: dist/
           if-no-files-found: error
           compression-level: 0
+

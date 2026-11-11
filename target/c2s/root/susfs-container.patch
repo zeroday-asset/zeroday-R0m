@@ -1,0 +1,94 @@
+diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
+--- a/fs/proc_namespace.c
++++ b/fs/proc_namespace.c
+@@ -113,7 +113,8 @@
+ #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+ 	if (READ_ONCE(susfs_hide_sus_mnts_for_non_su_procs) &&
+ 		r->mnt_id >= DEFAULT_KSU_MNT_ID &&
+-		!susfs_is_current_ksu_domain())
++		!susfs_is_current_ksu_domain() &&
++		!susfs_is_current_in_container())
+ 	{
+ 		return 0;
+ 	}
+@@ -156,7 +157,8 @@
+ #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+ 	if (READ_ONCE(susfs_hide_sus_mnts_for_non_su_procs) &&
+ 		r->mnt_id >= DEFAULT_KSU_MNT_ID &&
+-		!susfs_is_current_ksu_domain())
++		!susfs_is_current_ksu_domain() &&
++		!susfs_is_current_in_container())
+ 	{
+ 		return 0;
+ 	}
+@@ -227,7 +229,8 @@
+ #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+ 	if (READ_ONCE(susfs_hide_sus_mnts_for_non_su_procs) &&
+ 		r->mnt_id >= DEFAULT_KSU_MNT_ID &&
+-		!susfs_is_current_ksu_domain())
++		!susfs_is_current_ksu_domain() &&
++		!susfs_is_current_in_container())
+ 	{
+ 		return 0;
+ 	}
+diff --git a/fs/susfs.c b/fs/susfs.c
+--- a/fs/susfs.c
++++ b/fs/susfs.c
+@@ -22,12 +22,26 @@
+ #include <linux/jump_label.h>
+ #include <linux/version.h> // We need check kernel version.
+ #include <linux/susfs.h>
++#include <linux/pid_namespace.h>
+ #include "fuse/fuse_i.h"
+ #include "mount.h"
+ 
+ extern bool susfs_is_current_ksu_domain(void);
+ extern void setup_selinux(const char *domain, struct cred *cred);
+ extern struct cred *ksu_cred;
++
++/* Containers need real mount metadata after leaving the KernelSU domain.
++ * Check the active PID namespace: unsharing mounts alone does not exempt
++ * Android apps. Every non-initial PID namespace is exempt, not just Droidspaces.
++ */
++bool susfs_is_current_in_container(void)
++{
++#ifdef CONFIG_PID_NS
++	return task_active_pid_ns(current) != &init_pid_ns;
++#else
++	return false;
++#endif
++}
+ 
+ #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
+ DEFINE_STATIC_KEY_TRUE(susfs_is_log_enabled);
+diff --git a/include/linux/susfs_def.h b/include/linux/susfs_def.h
+--- a/include/linux/susfs_def.h
++++ b/include/linux/susfs_def.h
+@@ -138,8 +138,18 @@
+ int data_type, susfs_fname_t file_name, u32 cookie)
+ #endif
+ 
++#ifdef CONFIG_KSU_SUSFS
++bool susfs_is_current_in_container(void);
++#else
++static inline bool susfs_is_current_in_container(void)
++{
++	return false;
++}
++#endif
++
+ static inline bool susfs_is_current_proc_umounted(void) {
+-	return (likely(test_thread_flag(TIF_PROC_UMOUNTED)));
++	return (likely(test_thread_flag(TIF_PROC_UMOUNTED)) &&
++		!susfs_is_current_in_container());
+ }
+ 
+ static inline void susfs_set_current_proc_umounted(void) {
+@@ -148,6 +158,7 @@
+ 
+ static inline bool susfs_is_current_proc_umounted_app(void) {
+ 	return (likely(test_thread_flag(TIF_PROC_UMOUNTED)) &&
++			!susfs_is_current_in_container() &&
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+ 			__kuid_val(current_uid()) >= 10000);
+ #else
