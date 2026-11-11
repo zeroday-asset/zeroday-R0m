@@ -11,6 +11,12 @@ cleanup() {
     droidspaces --name="$name" run cat /fixture/docker-info.txt > "$results/docker-info.txt" 2>&1 || true
     droidspaces --name="$name" info > "$results/container-info.txt" 2>&1 || true
     timeout 45 droidspaces --name="$name" stop > "$results/stop.log" 2>&1 || true
+    mkdir -p "$root/readback"
+    if mount -o loop,ro "$root/rootfs.img" "$root/readback"; then
+        cp "$root/readback"/fixture/*.log "$results/" 2>/dev/null || true
+        cat "$root/readback/fixture/init.log" 2>/dev/null || true
+        umount "$root/readback"
+    fi
     if [ "$status" -eq 0 ]; then
         echo 'PASS: Linux Droidspaces/Docker integration' > "$results/result.txt"
     else
