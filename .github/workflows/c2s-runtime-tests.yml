@@ -1,0 +1,39 @@
+name: Droidspaces Docker runtime tests
+on:
+  push:
+    branches: [c2s-runtime-tests]
+    paths:
+      - '.github/workflows/c2s-runtime-tests.yml'
+      - 'target/c2s/tests/**'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: c2s-runtime-tests
+  cancel-in-progress: true
+jobs:
+  linux-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          sparse-checkout: target/c2s/tests
+      - name: Install runtime-test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools iptables e2fsprogs jq
+      - name: Compile pinned Droidspaces and prepare Linux fixture
+        run: bash target/c2s/tests/prepare-linux.sh
+      - name: Exercise Droidspaces and nested Docker
+        run: |
+          set -o pipefail
+          sudo bash target/c2s/tests/run-linux.sh 2>&1 | tee runtime-results/runtime.log
+      - name: Preserve runtime evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: droidspaces-docker-linux-evidence-${{ github.sha }}
+          path: runtime-results/
+          if-no-files-found: warn
