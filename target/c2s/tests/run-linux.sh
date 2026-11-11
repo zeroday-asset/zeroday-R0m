@@ -34,6 +34,12 @@ droidspaces check | tee "$results/check.txt"
 timeout 120 droidspaces --name="$name" --rootfs-img="$root/rootfs.img" \
     --init=/sbin/init --net=nat --dns="$(cat "$root/dns-server")" \
     --memory=2G --cpus=2 --pids-limit=1024 --allow-sandboxing start
+# The runner already runs Docker with nftables, while this Droidspaces backend
+# manages legacy iptables directly. Permit only the test's ds-prefixed links
+# through the independent nft filter as well; retain the existing host policy.
+iptables-nft -I FORWARD 1 -i ds+ -j ACCEPT
+iptables-nft -I FORWARD 1 -o ds+ -j ACCEPT
+iptables-nft -S FORWARD
 timeout 300 droidspaces --name="$name" run /fixture/guest-docker.sh
 # A clean stop and another boot must also work on the same persistent image.
 timeout 45 droidspaces --name="$name" stop

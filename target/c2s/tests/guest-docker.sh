@@ -27,7 +27,10 @@ assert info['mnt_id'].strip() in mounts
 os.close(fd)
 print('PASS: fdinfo mount ID is present in mountinfo')
 PY
-curl --fail --max-time 20 --silent http://example.com/ > /fixture/outer-http-result
+ls -l /etc/resolv.conf
+cat /etc/resolv.conf
+ip route
+curl --fail --max-time 20 --silent --show-error http://example.com/ > /fixture/outer-http-result
 mark 'outer Droidspaces container has DNS and outbound HTTP'
 systemctl start docker.service
 for attempt in $(seq 1 90); do
