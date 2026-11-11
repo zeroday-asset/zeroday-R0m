@@ -18,6 +18,7 @@ docker build -t c2s-droidspaces-fixture target/c2s/tests
 fixture_id=$(docker create c2s-droidspaces-fixture)
 trap 'docker rm -f "$fixture_id" >/dev/null' EXIT
 docker export "$fixture_id" | sudo tar -x -C .runtime/rootfs
+sudo cp .runtime/rootfs/fixture/docker-binaries.sha256 runtime-results/
 # Cloud runners may permit only their assigned DNS server. Avoid substituting
 # a public resolver, and record the resolver used in the evidence.
 dns_server=$(awk '$1=="nameserver" && $2 !~ /^127\./ {print $2; exit}' /run/systemd/resolve/resolv.conf /etc/resolv.conf)

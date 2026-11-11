@@ -1,4 +1,3 @@
-FROM docker:29-dind AS docker-current
 FROM debian:bookworm-slim
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     docker.io iptables iproute2 util-linux procps curl ca-certificates uidmap python3 systemd-sysv \
@@ -7,8 +6,13 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
     && update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy \
     && mkdir -p /etc/docker /fixture /www \
     && printf '{"userns-remap":"default","exec-opts":["native.cgroupdriver=systemd"],"features":{"containerd-snapshotter":false}}\n' > /etc/docker/daemon.json
-COPY --from=docker-current /usr/local/bin/ /usr/local/bin/
-RUN /usr/local/bin/containerd config default > /etc/fixture-containerd.toml
+# Use the complete release tarball. The current dind image intentionally omits
+# standalone containerd, which must not fall back to Debian's older daemon.
+RUN curl -fLsS --retry 3 https://download.docker.com/linux/static/stable/x86_64/docker-29.9.3.tgz -o /tmp/docker.tgz \
+    && sha256sum /tmp/docker.tgz > /fixture/docker-binaries.sha256 \
+    && tar -xzf /tmp/docker.tgz --strip-components=1 -C /usr/local/bin \
+    && rm /tmp/docker.tgz \
+    && /usr/local/bin/containerd config default > /etc/fixture-containerd.toml
 COPY guest-docker.sh /fixture/guest-docker.sh
 RUN chmod 755 /fixture/guest-docker.sh \
     && systemctl disable docker.service docker.socket containerd.service \
