@@ -36,6 +36,8 @@ jobs:
             libpcre2-dev libprotobuf-dev libssl-dev libunwind-dev libzstd-dev lld \
             protobuf-compiler python-is-python3 python3 rsync unzip webp wget zip \
             openjdk-17-jdk-headless
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           echo 'JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> "$GITHUB_ENV"
           echo '/usr/lib/jvm/java-17-openjdk-amd64/bin' >> "$GITHUB_PATH"
           echo "C2S_ROOT_KERNEL_DIR=$RUNNER_TEMP/c2s-kernel" >> "$GITHUB_ENV"
