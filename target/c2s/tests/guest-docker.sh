@@ -29,7 +29,12 @@ print('PASS: fdinfo mount ID is present in mountinfo')
 PY
 ls -l /etc/resolv.conf
 cat /etc/resolv.conf
+for attempt in $(seq 1 60); do
+    if ip route show default | grep -q default; then break; fi
+    sleep 1
+done
 ip route
+ip route show default | grep default
 curl --fail --max-time 20 --silent --show-error http://example.com/ > /fixture/outer-http-result
 mark 'outer Droidspaces container has DNS and outbound HTTP'
 systemctl start docker.service

@@ -9,6 +9,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 COPY guest-docker.sh /fixture/guest-docker.sh
 RUN chmod 755 /fixture/guest-docker.sh \
     && systemctl disable docker.service docker.socket containerd.service \
-    && systemctl mask systemd-networkd.service systemd-networkd.socket \
+    && mkdir -p /etc/systemd/network \
+    && printf '[Match]\nName=eth0\n[Network]\nDHCP=yes\n[DHCPv4]\nUseDNS=no\n' > /etc/systemd/network/20-fixture.network \
+    && systemctl enable systemd-networkd.service \
     && printf '[Unit]\nAfter=basic.target\n[Service]\nType=oneshot\nExecStart=/usr/bin/touch /fixture/init-ready\nRemainAfterExit=yes\n[Install]\nWantedBy=multi-user.target\n' > /etc/systemd/system/fixture-ready.service \
     && systemctl enable fixture-ready.service
