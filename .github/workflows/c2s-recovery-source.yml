@@ -22,7 +22,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo docker system prune -af || true
           sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache clang cpio curl flex g++-multilib gcc-aarch64-linux-gnu git gperf lib32ncurses5-dev lib32readline-dev lib32z1-dev libbz2-dev libelf-dev liblz4-tool libncurses5 libncurses5-dev libssl-dev libxml2-utils lld lzop openjdk-11-jdk-headless python-is-python3 python3 rsync schedtool unzip xsltproc zip zlib1g-dev
+          sudo apt-get install -y bc bison build-essential ccache clang cpio curl flex g++-multilib git gperf lib32ncurses5-dev lib32readline-dev lib32z1-dev libbz2-dev libelf-dev liblz4-tool libncurses5 libncurses5-dev libssl-dev libxml2-utils lld lzop openjdk-11-jdk-headless python-is-python3 python3 rsync schedtool unzip xsltproc zip zlib1g-dev
           git config --global user.email github-actions[bot]@users.noreply.github.com
           git config --global user.name github-actions[bot]
           echo "C2S_RECOVERY_KERNEL=$RUNNER_TEMP/c2s-recovery-kernel" >> "$GITHUB_ENV"
@@ -66,3 +66,4 @@ jobs:
           path: dist/
           if-no-files-found: error
           compression-level: 0
+
