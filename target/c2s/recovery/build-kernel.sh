@@ -9,6 +9,12 @@ curl -fLsS --retry 3 "https://codeload.github.com/Android-Artisan/android_kernel
 tar -xzf "$work_dir/kernel.tar.gz" -C "$work_dir/kernel" --strip-components=1
 rm "$work_dir/kernel.tar.gz"
 cd "$work_dir/kernel"
+# The base Kconfig unconditionally sources this directory, even with KSU off.
+# Supply the pinned source so Kconfig can parse it; never enable CONFIG_KSU.
+mkdir -p KernelSU-Next
+curl -fLsS --retry 3 'https://codeload.github.com/KernelSU-Next/KernelSU-Next/tar.gz/c81cdf51c3bb606836c6fc9a7cc858053eb0bc62' -o "$work_dir/ksu.tar.gz"
+tar -xzf "$work_dir/ksu.tar.gz" -C KernelSU-Next --strip-components=1
+rm "$work_dir/ksu.tar.gz"
 mkdir -p toolchain/clang_14
 curl -fLsS --retry 3 'https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-13.0.0_r13/clang-r450784d.tar.gz' -o "$work_dir/clang.tar.gz"
 tar -xzf "$work_dir/clang.tar.gz" -C toolchain/clang_14
