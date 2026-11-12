@@ -20,6 +20,9 @@ curl -fLsS --retry 3 'https://android.googlesource.com/platform/prebuilts/clang/
 tar -xzf "$work_dir/clang.tar.gz" -C toolchain/clang_14
 rm "$work_dir/clang.tar.gz"
 # Recovery has its own kernel. Do not put the Android root/SUSFS kernel here.
+# The pinned kernel's newer BPF verifier expects its native JIT configuration;
+# the older recovery fragment's JIT-off setting no longer compiles with it.
+sed -i 's/^# CONFIG_BPF_JIT is not set$/CONFIG_BPF_JIT=y/; s/^# CONFIG_BPF_JIT_ALWAYS_ON is not set$/CONFIG_BPF_JIT_ALWAYS_ON=y/' arch/arm64/configs/recovery.config
 bash build.sh -m c2s -k n -r y
 for config in SECURITY_SELINUX_ALWAYS_PERMISSIVE F2FS_FS EXT4_FS EROFS_FS; do
     grep -Fx "CONFIG_${config}=y" out/.config
