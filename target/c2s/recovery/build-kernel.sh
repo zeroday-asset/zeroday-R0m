@@ -24,6 +24,9 @@ rm "$work_dir/clang.tar.gz"
 # the older recovery fragment's JIT-off setting no longer compiles with it.
 sed -i 's/\r$//' arch/arm64/configs/recovery.config
 sed -i 's/^# CONFIG_BPF_JIT is not set$/CONFIG_BPF_JIT=y/; s/^# CONFIG_BPF_JIT_ALWAYS_ON is not set$/CONFIG_BPF_JIT_ALWAYS_ON=y/' arch/arm64/configs/recovery.config
+# This downstream base enables KSU at the end of its defconfig, independently
+# of build.sh -k n. Override it in the last-applied recovery fragment.
+printf '\n# CONFIG_KSU is not set\n# CONFIG_KSU_SUSFS is not set\n' >> arch/arm64/configs/recovery.config
 bash build.sh -m c2s -k n -r y
 for config in SECURITY_SELINUX_ALWAYS_PERMISSIVE F2FS_FS EXT4_FS EROFS_FS; do
     grep -Fx "CONFIG_${config}=y" out/.config
